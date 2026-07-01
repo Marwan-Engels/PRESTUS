@@ -136,6 +136,20 @@ end
                 'Sequential report generation failed: %s', ME_rep.message);
         end
 
+        % ---- combine sequential NIfTIs across the chain ----
+        % Sums matching NIfTIs (grouped by hemisphere token in output_affix) into
+        % <dir_output>/nii/sequential_nii/. Must run before the cleanup block below,
+        % since cleanup may delete the per-run NIfTIs this reads from.
+        do_combine = ~isfield(options, 'sequential_combine_nifti') || options.sequential_combine_nifti;
+        if do_combine
+            try
+                combine_sequential_niftis(all_run_params, run_affixes, options);
+            catch ME_comb
+                warning('prestus_pipeline:sequentialCombine', ...
+                    'Sequential NIfTI combining failed: %s', ME_comb.message);
+            end
+        end
+
         % ---- optional per-run NIfTI / image cleanup ----
         % Only runs after a successful report so integrated outputs exist first.
         % Cache (including heating timeseries .mat) is always retained.
@@ -150,11 +164,31 @@ end
                 else
                     continue
                 end
-                for subdir = {fullfile(base, 'nii'), fullfile(base, 'img')}
-                    d = subdir{1};
-                    if isfolder(d)
-                        fprintf('Removing intermediate outputs: %s\n', d);
-                        rmdir(d, 's');
+                % img/ is removed wholesale, but nii/ must keep the
+                % sequential_nii/ subfolder written above, so only the files
+                % directly inside nii/ are deleted, not the whole tree.
+                img_dir = fullfile(base, 'img');
+                if isfolder(img_dir)
+                    fprintf('Removing intermediate outputs: %s\n', img_dir);
+                    rmdir(img_dir, 's');
+                end
+
+                nii_dir = fullfile(base, 'nii');
+                if isfolder(nii_dir)
+                    fprintf('Removing intermediate outputs: %s (keeping sequential_nii/)\n', nii_dir);
+                    nii_entries = dir(nii_dir);
+                    for ei = 1:numel(nii_entries)
+                        entry = nii_entries(ei);
+                        if strcmp(entry.name, '.') || strcmp(entry.name, '..') || ...
+                                strcmp(entry.name, 'sequential_nii')
+                            continue
+                        end
+                        entry_path = fullfile(nii_dir, entry.name);
+                        if entry.isdir
+                            rmdir(entry_path, 's');
+                        else
+                            delete(entry_path);
+                        end
                     end
                 end
             end

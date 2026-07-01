@@ -61,6 +61,41 @@ options.sequential_configs.config_2.io.acoustic_cache_affix = config_1.io.output
 | `io.thermal_cache_affix` | Affix for the thermal cache file (defaults to the run's own `io.output_affix`). |
 | `options.sequential_configs` | Struct of follow-up configs to dispatch in order (see example above). |
 | `options.sequential_cleanup_intermediate` | If `true`, per-run NIfTI and image files are deleted after the final summary report is successfully generated. Default: `false`. |
+| `options.sequential_combine_nifti` | If `true`, sums each data type's NIfTI across all runs in the chain (grouped by hemisphere, see below) and writes the result to `<dir_output>/nii/sequential_nii/`. Default: `true`. |
+| `options.sequential_combine_datatypes` | Cell array of data type names to combine. Default: `{'intensity','MI','pressure','heating_end','CEM43_end','CEM43_iso_end'}`. |
+| `options.sequential_combine_hemisphere_tokens` | Cell array of tokens looked for as `_<token>_` inside each run's `output_affix` to group runs before summing. Default: `{'L','R'}`. |
+
+---
+
+## Combining NIfTIs across a sequential chain
+
+Once the last run in a chain finishes, `sequential_pipeline` calls
+`combine_sequential_niftis` to voxelwise-sum each data type's NIfTI across every
+run in the chain — the built-in replacement for manually running
+`fslmaths -add` over a hardcoded list of affixes.
+
+Runs are grouped before summing by the first hemisphere token
+(`options.sequential_combine_hemisphere_tokens`, default `{'L','R'}`) found as
+`_<token>_` inside their `io.output_affix`. This matters whenever a single chain
+interleaves targets across hemispheres (e.g. `first_config` = pos1 `L`,
+`config_2` = pos2 `R`, `config_3` = pos3 `L`, ...) — the left-hemisphere runs are
+summed into one NIfTI and the right-hemisphere runs into another, rather than
+being flattened into a single sum. Runs whose affix matches no token fall into a
+combined `all` group; if no run in the chain matches any token, the whole chain
+is treated as one group. A group needs at least 2 runs' worth of data for a
+given data type/space to produce a combined output.
+
+Combined files are written to `<dir_output>/nii/sequential_nii/`, named:
+
+```
+sub-<NNN>_<medium>_<T1w|MNI>_sequential_<hemisphere>_combined_<shared-affix-tail>_<data_type>.nii.gz
+```
+
+e.g. `sub-301_layered_T1w_sequential_L_combined_F45_I600_r2mm_CtrlTUS_posthoc_intensity.nii.gz`.
+
+Set `options.sequential_combine_nifti = false` to skip this step entirely. If
+`options.sequential_cleanup_intermediate` is also `true`, cleanup removes the
+other per-run files in `nii/` but preserves the `sequential_nii/` subfolder.
 
 ---
 
