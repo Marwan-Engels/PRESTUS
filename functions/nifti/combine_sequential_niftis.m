@@ -26,8 +26,8 @@ function combined_paths = combine_sequential_niftis(run_params_list, options)
 %                     run (base run first, then each sequential follow-up).
 %   options         - (optional) struct.  Recognised fields:
 %                     .sequential_combine_units - cellstr of data types to
-%                        combine.  Default: all acoustic + thermal units that
-%                        PRESTUS writes (see DEFAULT_UNITS below).
+%                        combine.  Default: physically-additive maps only
+%                        (see DEFAULT_UNITS below).
 %
 % Output:
 %   combined_paths  - cellstr of the combined NIfTI files that were written.
