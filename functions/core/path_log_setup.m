@@ -112,8 +112,8 @@ end
         parameters.io.dir_nii_T1w          = fullfile(out, 'nii');
         parameters.io.dir_nii_MNI          = fullfile(out, 'nii');
         parameters.io.dir_img              = fullfile(out, 'img');
-        parameters.io.dir_tabular          = out;
-        parameters.io.dir_reports          = out;
+        parameters.io.dir_tabular          = fullfile(out, 'reports');
+        parameters.io.dir_reports          = fullfile(out, 'reports');
         parameters.io.dir_logs             = fullfile(out, 'log');
         parameters.io.dir_cache            = fullfile(out, 'cache');
         parameters.io.dir_debug            = fullfile(out, 'debug');
@@ -124,7 +124,7 @@ end
         nii_enabled = ~(isfield(parameters, 'modules') && ...
                         isfield(parameters.modules, 'run_nifti_creation') && ...
                         parameters.modules.run_nifti_creation == 0);
-        always_create = {parameters.io.dir_img, parameters.io.dir_logs, parameters.io.dir_cache};
+        always_create = {parameters.io.dir_img, parameters.io.dir_logs, parameters.io.dir_cache, parameters.io.dir_tabular, parameters.io.dir_reports};
         if nii_enabled; always_create{end+1} = parameters.io.dir_nii; end
         for d = always_create
             if ~isfolder(d{1}); mkdir(d{1}); end
