@@ -146,7 +146,7 @@ end
                      options.sequential_combine_niftis;
         if do_combine
             try
-                combine_sequential_niftis(all_run_params, options);
+                combine_sequential_niftis(all_run_params, run_affixes, options);
             catch ME_comb
                 warning('prestus_pipeline:sequentialCombine', ...
                     'Sequential NIfTI combination failed: %s', ME_comb.message);

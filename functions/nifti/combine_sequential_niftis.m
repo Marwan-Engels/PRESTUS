@@ -1,4 +1,4 @@
-function combined_paths = combine_sequential_niftis(run_params_list, options)
+function combined_paths = combine_sequential_niftis(run_params_list, run_affixes, options)
 % COMBINE_SEQUENTIAL_NIFTIS  Voxelwise-sum per-run NIfTIs across a sequential chain
 %
 % After a chain of sequential simulations completes, this adds together the
@@ -17,13 +17,26 @@ function combined_paths = combine_sequential_niftis(run_params_list, options)
 % and survive options.sequential_cleanup_intermediate:
 %     <dir_output>/combined/sub-XXX_<medium>_<space>_seqcombined_<unit>.nii.gz
 %
+% Per-run filenames are located through the explicit affix registry
+% (run_affixes) — the actual output affixes submitted for runs 1..N — exactly
+% like generate_sequential_report.  This guarantees every submitted config is
+% combined by its own affix, rather than re-inferring the name from each
+% parameter struct.  When the registry is omitted, the affix falls back to each
+% run's io.output_affix.
+%
 % Use as:
 %   combined_paths = combine_sequential_niftis(run_params_list)
-%   combined_paths = combine_sequential_niftis(run_params_list, options)
+%   combined_paths = combine_sequential_niftis(run_params_list, run_affixes)
+%   combined_paths = combine_sequential_niftis(run_params_list, run_affixes, options)
 %
 % Input:
 %   run_params_list - (1xN) cell array of PRESTUS parameters structs, one per
 %                     run (base run first, then each sequential follow-up).
+%   run_affixes     - (optional) (1xN) cell array of structs, each with field
+%                     .output_affix, giving the affix submitted for that run.
+%                     When its length matches run_params_list it is the source
+%                     of truth for filenames; otherwise per-run io.output_affix
+%                     is used.
 %   options         - (optional) struct.  Recognised fields:
 %                     .sequential_combine_units - cellstr of data types to
 %                        combine.  Default: physically-additive maps only
@@ -37,6 +50,7 @@ function combined_paths = combine_sequential_niftis(run_params_list, options)
 
 arguments
     run_params_list (1,:) cell
+    run_affixes     (1,:) cell   = {}
     options         (1,1) struct = struct()
 end
 
@@ -61,6 +75,10 @@ end
         fprintf('combine_sequential_niftis: fewer than 2 runs — nothing to combine.\n');
         return
     end
+
+    % Affix registry is authoritative when it covers every run; otherwise fall
+    % back to each run's io.output_affix.
+    has_affix_registry = numel(run_affixes) == n_runs;
 
     % Resolve io dirs so dir_nii_* / dir_output are populated even for params
     % built before the pipeline ran (mirrors generate_sequential_report).
@@ -95,16 +113,22 @@ end
         for ui = 1:numel(units)
             unit = units{ui};
 
-            % Collect the per-run files that actually exist on disk.
+            % Collect the per-run files that actually exist on disk, one per
+            % submitted affix (runs 1..N).
             run_files = {};
             for ri = 1:n_runs
                 p = run_params_list{ri};
                 if ~isfield(p.io, dir_field) || isempty(p.io.(dir_field))
                     continue
                 end
+                if has_affix_registry
+                    o_affix = run_affixes{ri}.output_affix;
+                else
+                    o_affix = p.io.output_affix;
+                end
                 f = fullfile(p.io.(dir_field), ...
                     sprintf('sub-%03d_%s_%s%s_%s.nii.gz', ...
-                        subject_id, medium, space_tag, p.io.output_affix, unit));
+                        subject_id, medium, space_tag, o_affix, unit));
                 if isfile(f)
                     run_files{end+1} = f; %#ok<AGROW>
                 end

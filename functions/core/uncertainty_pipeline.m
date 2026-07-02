@@ -271,7 +271,9 @@ switch platform
                          options.sequential_combine_niftis;
             if do_combine && numel(all_default) > 1
                 try
-                    combine_sequential_niftis(all_default, options);
+                    % No explicit affix registry here; fall back to each
+                    % default-variant struct's own io.output_affix.
+                    combine_sequential_niftis(all_default, {}, options);
                 catch ME_seq_comb
                     warning('uncertainty_pipeline:seqCombine', ...
                         'Sequential NIfTI combination failed: %s', ME_seq_comb.message);
