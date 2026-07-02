@@ -14,8 +14,10 @@ function combined_paths = combine_sequential_niftis(run_params_list, run_affixes
 %
 % Combined files are written to a 'combined' subfolder of the base run's output
 % directory (never into nii/), so they are not re-detected as per-run outputs
-% and survive options.sequential_cleanup_intermediate:
-%     <dir_output>/combined/sub-XXX_<medium>_<space>_seqcombined_<unit>.nii.gz
+% and survive options.sequential_cleanup_intermediate.  The first (base) run's
+% full affix is embedded in the name so that separate chains sharing one subject
+% folder (e.g. one chain per region / F / I / Targeting_type) do not collide:
+%     <dir_output>/combined/sub-XXX_<medium>_<space><base_affix>_seqcombined_<unit>.nii.gz
 %
 % Per-run filenames are located through the explicit affix registry
 % (run_affixes) — the actual output affixes submitted for runs 1..N — exactly
@@ -89,6 +91,15 @@ end
     base_p     = run_params_list{1};
     subject_id = base_p.subject_id;
     medium     = base_p.simulation.medium;
+
+    % Combined outputs are named with the first (base) run's full affix so that
+    % distinct sequential chains written to the same subject folder (e.g. one
+    % chain per region / F / I / Targeting_type) do not overwrite one another.
+    if has_affix_registry
+        base_affix = run_affixes{1}.output_affix;
+    else
+        base_affix = base_p.io.output_affix;
+    end
 
     % NIfTIs are only produced for layered / phantom media.
     if ~contains(medium, {'layered', 'phantom'})
@@ -170,8 +181,8 @@ end
             end
 
             out_path = fullfile(combined_dir, ...
-                sprintf('sub-%03d_%s_%s_seqcombined_%s.nii.gz', ...
-                    subject_id, medium, space_tag, unit));
+                sprintf('sub-%03d_%s_%s%s_seqcombined_%s.nii.gz', ...
+                    subject_id, medium, space_tag, base_affix, unit));
             try
                 hdr_ref.Filename = out_path;
                 hdr_ref.Datatype = 'single';

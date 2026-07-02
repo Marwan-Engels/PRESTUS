@@ -70,13 +70,13 @@ options.sequential_configs.config_2.io.acoustic_cache_affix = config_1.io.output
 
 After the sequential chain finishes, PRESTUS adds every run's NIfTI output together into a single **combined** map per data type and coordinate space, for the subject. Each run is identified by its own `io.output_affix`, and the runs sharing a data type / space are summed voxelwise — the PRESTUS-native equivalent of `fslmaths <run1> -add <run2> -add … <combined>`. This gives the cumulative deposition across the whole sequence (contrast with the voxelwise-**max** intensity map in the sequential report, which is the worst-case single exposure).
 
-Combined files are written to a `combined/` subfolder of the base run's output directory (never into `nii/`, so they are not re-detected as per-run outputs and survive `sequential_cleanup_intermediate`):
+Combined files are written to a `combined/` subfolder of the base run's output directory (never into `nii/`, so they are not re-detected as per-run outputs and survive `sequential_cleanup_intermediate`). The first (base) run's full affix is embedded in the name so that separate chains sharing one subject folder (e.g. one chain per region / F / I / Targeting_type) do not overwrite each other:
 
 ```
-<dir_output>/combined/sub-XXX_<medium>_<space>_seqcombined_<unit>.nii.gz
+<dir_output>/combined/sub-XXX_<medium>_<space><base_affix>_seqcombined_<unit>.nii.gz
 ```
 
-where `<space>` is `T1w` (always) or `MNI` (layered runs that saved MNI), and `<unit>` is each combined data type. By default only physically-additive maps are summed — `intensity`, `pressure`, `heatrise_end`, `CEM43_end`, `CEM43_iso_end` — because summing absolute-temperature maps (`heating` / `heating_end`) would stack the ~37 °C baselines; use `options.sequential_combine_units` to change the set. A combined file is written only when at least two runs produced that map. In uncertainty mode, the **default** variant's per-run NIfTIs are combined.
+where `<space>` is `T1w` (always) or `MNI` (layered runs that saved MNI), `<base_affix>` is the `io.output_affix` of the first config in the chain, and `<unit>` is each combined data type. By default only physically-additive maps are summed — `intensity`, `pressure`, `heatrise_end`, `CEM43_end`, `CEM43_iso_end` — because summing absolute-temperature maps (`heating` / `heating_end`) would stack the ~37 °C baselines; use `options.sequential_combine_units` to change the set. A combined file is written only when at least two runs produced that map. In uncertainty mode, the **default** variant's per-run NIfTIs are combined.
 
 ---
 
