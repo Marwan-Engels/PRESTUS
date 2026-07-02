@@ -109,6 +109,23 @@ end
                 'Sequential report generation failed: %s', ME_rep.message);
         end
 
+        % ---- combine per-run NIfTIs into voxelwise-summed maps ----
+        % Adds every run's NIfTI output together (per data type and space) into
+        % a single "combined" map per subject, identified by each run's affix.
+        % Runs before cleanup so the per-run source NIfTIs still exist; combined
+        % maps are written to <dir_output>/combined and survive cleanup.
+        % Enabled by default; set options.sequential_combine_niftis = false to skip.
+        do_combine = ~isfield(options, 'sequential_combine_niftis') || ...
+                     options.sequential_combine_niftis;
+        if do_combine
+            try
+                combine_sequential_niftis(all_run_params, options);
+            catch ME_comb
+                warning('prestus_pipeline:sequentialCombine', ...
+                    'Sequential NIfTI combination failed: %s', ME_comb.message);
+            end
+        end
+
         % ---- optional per-run NIfTI / image cleanup ----
         % Only runs after a successful report so integrated outputs exist first.
         % Cache (including heating timeseries .mat) is always retained.

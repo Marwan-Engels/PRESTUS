@@ -4,6 +4,13 @@ Notable changes to this project are documented here.
 
 ---
 
+## Unreleased
+
+#### Sequential simulations
+- After a sequential chain completes, per-run NIfTIs are voxelwise-summed into a single combined map per data type and coordinate space (`<dir_output>/combined/sub-XXX_<medium>_<space>_seqcombined_<unit>.nii.gz`), identified by each run's affix. Enabled by default; controlled by `options.sequential_combine_niftis` and `options.sequential_combine_units`. See [doc_advanced.md](doc_advanced.md#combined-summed-niftis-across-sequential-runs).
+
+---
+
 ## v0.6.1
 *(2026-05-22)*
 
