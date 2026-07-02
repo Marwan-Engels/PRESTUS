@@ -263,6 +263,20 @@ switch platform
                 warning('uncertainty_pipeline:seqReport', ...
                     'Sequential uncertainty report failed: %s', ME_seq_rep.message);
             end
+
+            % Combine the default variant's per-run NIfTIs into voxelwise-summed
+            % maps (per data type / space).  Enabled by default; disable with
+            % options.sequential_combine_niftis = false.
+            do_combine = ~isfield(options, 'sequential_combine_niftis') || ...
+                         options.sequential_combine_niftis;
+            if do_combine && numel(all_default) > 1
+                try
+                    combine_sequential_niftis(all_default, options);
+                catch ME_seq_comb
+                    warning('uncertainty_pipeline:seqCombine', ...
+                        'Sequential NIfTI combination failed: %s', ME_seq_comb.message);
+                end
+            end
         end
 
     % ---------------------------------------------------------------------

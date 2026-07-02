@@ -33,6 +33,7 @@ Adds defacing, an acoustic FOV crop, multi-transducer incoherent summation, an e
 
 #### Sequential / Reporting
 - Run labels derived automatically from output affixes in consolidated reports
+- After a sequential chain completes, per-run NIfTIs are voxelwise-summed into a single combined map per data type and coordinate space (`<dir_output>/combined/sub-XXX_<medium>_<space>_seqcombined_<unit>.nii.gz`), identified by each run's affix. Enabled by default; controlled by `options.sequential_combine_niftis` and `options.sequential_combine_units`. See [doc_advanced.md](doc_advanced.md#combined-summed-niftis-across-sequential-runs).
 - Post-job resource usage reported via SLURM `sacct`, including a CO₂e footprint estimate
 - ⚠️ **Fixed:** uncertainty pipeline CSV saved to correct path (no extra `tabular/` subdirectory)
 
