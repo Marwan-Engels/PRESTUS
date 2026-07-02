@@ -114,7 +114,10 @@ function job_id = prestus_pipeline_start(parameters, options)
             fprintf(fid, 'addpath(''%s'');\n', fullfile(prestus_path, 'functions', 'helper'));
             fprintf(fid, 'safe_addpath(''%s'');\n', fullfile(prestus_path, 'functions'));
             fprintf(fid, 'safe_addpath(''%s'');\n', fullfile(prestus_path, 'external'));
-            if isfield(options, 'sequential_configs')
+            if isfield(options, 'sequential_configs') || isfield(options, 'sequential_finalize')
+                % sequential_configs: dispatch the next follow-up run.
+                % sequential_finalize: the last run carries the report/combine
+                % payload it must run at stage 12 (see sequential_pipeline).
                 save(temp_data_path, 'options', '-append');
                 fprintf(fid, 'prestus_pipeline(parameters, options);\n');
             else

@@ -806,8 +806,14 @@ function [parameters] = prestus_pipeline(parameters, options)
     % When options.sequential_configs is present, dispatches the next
     % simulation in the sequence with the end-temperature and CEM43 maps
     % of this run wired up as initial conditions.  The entire chain
-    % recurses through sequential_pipeline until all configs are consumed,
-    % then a multi-run summary report is generated.
+    % recurses through sequential_pipeline until all configs are consumed.
+    %
+    % The LAST run carries options.sequential_finalize instead: after its own
+    % simulation completes here, it generates the multi-run summary report and
+    % the combined (voxelwise-summed) NIfTIs.  Finalising from this last run —
+    % rather than from the run that dispatched it — guarantees every config's
+    % NIfTIs exist first, which matters under slurm where each follow-up run is
+    % a separate non-blocking job.
     % ====================================================================
 
     if any(strcmp(fieldnames(options), 'sequential_configs'))
@@ -815,6 +821,12 @@ function [parameters] = prestus_pipeline(parameters, options)
         fprintf('FOLLOW-UP SIMULATION WITH IDENTICAL MEDIUM\n');
         fprintf('========================================\n\n');
         sequential_pipeline(parameters, options);
+    elseif isfield(options, 'sequential_finalize')
+        fprintf('========================================\n');
+        fprintf('SEQUENTIAL CHAIN COMPLETE — FINALISING\n');
+        fprintf('========================================\n\n');
+        sequential_finalize(options.sequential_finalize.run_params, ...
+                            options.sequential_finalize.run_affixes, options);
     end
 
     % ====================================================================

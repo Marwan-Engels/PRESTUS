@@ -18,8 +18,12 @@ function sequential_pipeline(parameters, options)
 %   runs are registered and passed explicitly to generate_sequential_report,
 %   which uses it for all file lookups instead of inferring from params structs.
 %
-% A multi-run summary HTML report is generated automatically after the last
-% sequential run completes (requires generate_sequential_report on the path).
+% After the last run, a multi-run summary HTML report and combined
+% (voxelwise-summed) NIfTIs are produced by sequential_finalize.  Rather than
+% running here in the dispatching run, finalisation is deferred to the LAST
+% run's own job (prestus_pipeline stage 12) via options.sequential_finalize, so
+% that every config's NIfTIs exist first — essential under slurm, where each
+% follow-up run is a separate non-blocking job.
 %
 % Intermediate data cleanup:
 %   Set options.sequential_cleanup_intermediate = true (default: false) to
@@ -119,71 +123,21 @@ end
         if isfield(options, 'sequential_run_affixes')
             options = rmfield(options, 'sequential_run_affixes');
         end
+
+        % Defer the report / combine / cleanup to the LAST run's OWN job
+        % (prestus_pipeline STAGE 12), rather than running it here in the
+        % dispatching run.  Under slurm the last run is submitted as a
+        % separate, non-blocking job, so finalising here would execute before
+        % that run's NIfTIs exist and the combined maps / report would omit the
+        % final config.  By the time the last run reaches stage 12, every
+        % config 1..N has written its outputs.
+        if numel(all_run_params) > 1
+            seq_finalize             = struct();
+            seq_finalize.run_params  = all_run_params;
+            seq_finalize.run_affixes = run_affixes;
+            options.sequential_finalize = seq_finalize;
+        end
     end
 
     prestus_pipeline_start(sequential_parameters, options);
-
-    % ---- generate multi-run summary after the chain completes ----
-    if is_last_sequential && numel(all_run_params) > 1
-        report_ok = false;
-        try
-            seq_labels = cellfun(@(a) label_from_affix(a.output_affix), run_affixes, ...
-                'UniformOutput', false);
-            generate_sequential_report(all_run_params, seq_labels, run_affixes);
-            report_ok = true;
-        catch ME_rep
-            warning('prestus_pipeline:sequentialReport', ...
-                'Sequential report generation failed: %s', ME_rep.message);
-        end
-
-        % ---- combine per-run NIfTIs into voxelwise-summed maps ----
-        % Adds every run's NIfTI output together (per data type and space) into
-        % a single "combined" map per subject, identified by each run's affix.
-        % Runs before cleanup so the per-run source NIfTIs still exist; combined
-        % maps are written to <dir_output>/combined and survive cleanup.
-        % Enabled by default; set options.sequential_combine_niftis = false to skip.
-        do_combine = ~isfield(options, 'sequential_combine_niftis') || ...
-                     options.sequential_combine_niftis;
-        if do_combine
-            try
-                combine_sequential_niftis(all_run_params, run_affixes, options);
-            catch ME_comb
-                warning('prestus_pipeline:sequentialCombine', ...
-                    'Sequential NIfTI combination failed: %s', ME_comb.message);
-            end
-        end
-
-        % ---- optional per-run NIfTI / image cleanup ----
-        % Only runs after a successful report so integrated outputs exist first.
-        % Cache (including heating timeseries .mat) is always retained.
-        do_cleanup = report_ok && ...
-                     isfield(options, 'sequential_cleanup_intermediate') && ...
-                     options.sequential_cleanup_intermediate;
-        if do_cleanup
-            for ri = 1:numel(all_run_params)
-                p = all_run_params{ri};
-                if isfield(p.io, 'dir_output')
-                    base = p.io.dir_output;
-                else
-                    continue
-                end
-                for subdir = {fullfile(base, 'nii'), fullfile(base, 'img')}
-                    d = subdir{1};
-                    if isfolder(d)
-                        fprintf('Removing intermediate outputs: %s\n', d);
-                        rmdir(d, 's');
-                    end
-                end
-            end
-        end
-    end
-end
-
-function lbl = label_from_affix(affix)
-    if isempty(affix)
-        lbl = 'Base';
-    else
-        lbl = strtrim(regexprep(affix, '^_', ''));
-        if isempty(lbl); lbl = affix; end
-    end
 end
